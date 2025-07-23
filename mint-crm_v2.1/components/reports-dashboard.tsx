@@ -33,13 +33,21 @@ export default function ReportsDashboard() {
   const [performanceLoading, setPerformanceLoading] = useState(false)
   const [performanceError, setPerformanceError] = useState<string | null>(null)
 
+  // Helper to format date as YYYY-MM-DD
+  const formatDate = (date: Date | null) => date ? date.toISOString().split('T')[0] : undefined
+
   // Fetch dashboard stats from backend
   useEffect(() => {
     async function fetchStats() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch("/api/reports/dashboard-stats/")
+        let url = "/api/reports/dashboard-stats/"
+        const params = []
+        if (dateRange.from) params.push(`from=${formatDate(dateRange.from)}`)
+        if (dateRange.to) params.push(`to=${formatDate(dateRange.to)}`)
+        if (params.length) url += `?${params.join("&")}`
+        const res = await fetch(url)
         if (!res.ok) throw new Error("Failed to fetch dashboard stats")
         const data = await res.json()
         setDashboardStats(data)
@@ -50,7 +58,7 @@ export default function ReportsDashboard() {
       }
     }
     fetchStats()
-  }, [])
+  }, [dateRange])
 
   // Fetch case metrics for Case Reports tab
   useEffect(() => {
@@ -59,7 +67,12 @@ export default function ReportsDashboard() {
       setCaseMetricsLoading(true)
       setCaseMetricsError(null)
       try {
-        const res = await fetch("/api/reports/case-metrics/")
+        let url = "/api/reports/case-metrics/"
+        const params = []
+        if (dateRange.from) params.push(`from=${formatDate(dateRange.from)}`)
+        if (dateRange.to) params.push(`to=${formatDate(dateRange.to)}`)
+        if (params.length) url += `?${params.join("&")}`
+        const res = await fetch(url)
         if (!res.ok) throw new Error("Failed to fetch case metrics")
         const data = await res.json()
         setCaseMetrics(data)
@@ -70,7 +83,7 @@ export default function ReportsDashboard() {
       }
     }
     fetchCaseMetrics()
-  }, [reportType])
+  }, [reportType, dateRange])
   // Fetch performance metrics for Performance tab
   useEffect(() => {
     if (reportType !== "users") return
@@ -78,7 +91,12 @@ export default function ReportsDashboard() {
       setPerformanceLoading(true)
       setPerformanceError(null)
       try {
-        const res = await fetch("/api/reports/performance-metrics/")
+        let url = "/api/reports/performance-metrics/"
+        const params = []
+        if (dateRange.from) params.push(`from=${formatDate(dateRange.from)}`)
+        if (dateRange.to) params.push(`to=${formatDate(dateRange.to)}`)
+        if (params.length) url += `?${params.join("&")}`
+        const res = await fetch(url)
         if (!res.ok) throw new Error("Failed to fetch performance metrics")
         const data = await res.json()
         setPerformanceMetrics(data)
@@ -89,7 +107,7 @@ export default function ReportsDashboard() {
       }
     }
     fetchPerformanceMetrics()
-  }, [reportType])
+  }, [reportType, dateRange])
 
   const handleGenerateReport = () => {
     console.log("Generating report:", reportType, dateRange)

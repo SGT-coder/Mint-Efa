@@ -28,6 +28,7 @@ class Contact(models.Model):
     country = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     notes = models.TextField(blank=True)
+    tags = models.CharField(max_length=500, blank=True, help_text="Comma-separated tags")
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_contacts')
     created_at = models.DateTimeField(auto_now_add=True)

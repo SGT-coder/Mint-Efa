@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Search, Plus, MoreHorizontal, Calendar, User, Building } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,72 +10,72 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-const cases = [
-  {
-    id: "CASE-001",
-    title: "Server downtime issue",
-    description: "Customer reporting intermittent server connectivity issues affecting their operations.",
-    status: "In Progress",
-    priority: "High",
-    assignee: { name: "John Smith", avatar: "JS" },
-    contact: { name: "Alice Johnson", company: "TechCorp Inc." },
-    created: "2024-01-15",
-    updated: "2024-01-16",
-    category: "Technical",
-  },
-  {
-    id: "CASE-002",
-    title: "Email configuration problem",
-    description: "Unable to configure email settings for new domain setup.",
-    status: "Under Review",
-    priority: "Medium",
-    assignee: { name: "Sarah Johnson", avatar: "SJ" },
-    contact: { name: "Bob Wilson", company: "ABC Corp" },
-    created: "2024-01-14",
-    updated: "2024-01-15",
-    category: "Configuration",
-  },
-  {
-    id: "CASE-003",
-    title: "Database backup failure",
-    description: "Automated database backup process failing for the past 3 days.",
-    status: "Resolved",
-    priority: "High",
-    assignee: { name: "Mike Wilson", avatar: "MW" },
-    contact: { name: "Carol Davis", company: "DataFlow Ltd" },
-    created: "2024-01-13",
-    updated: "2024-01-14",
-    category: "Database",
-  },
-  {
-    id: "CASE-004",
-    title: "User access permissions",
-    description: "New employee needs access to customer portal and reporting tools.",
-    status: "Assigned",
-    priority: "Low",
-    assignee: { name: "Lisa Chen", avatar: "LC" },
-    contact: { name: "David Brown", company: "SecureNet" },
-    created: "2024-01-12",
-    updated: "2024-01-13",
-    category: "Access",
-  },
-]
-
 export default function CasesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [cases, setCases] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredCases = cases.filter((case_) => {
-    const matchesSearch =
-      case_.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      case_.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      case_.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || case_.status.toLowerCase().replace(" ", "-") === statusFilter
-    const matchesPriority = priorityFilter === "all" || case_.priority.toLowerCase() === priorityFilter
+  // Fetch cases from backend with filters
+  useEffect(() => {
+    const fetchCases = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const params = new URLSearchParams()
+        if (searchTerm) params.append("search", searchTerm)
+        if (statusFilter !== "all") params.append("status", statusFilter)
+        if (priorityFilter !== "all") params.append("priority", priorityFilter)
+        const res = await fetch(`/api/cases/?${params.toString()}`)
+        if (!res.ok) throw new Error("Failed to fetch cases")
+        const data = await res.json()
+        setCases(data)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchCases()
+  }, [searchTerm, statusFilter, priorityFilter])
 
-    return matchesSearch && matchesStatus && matchesPriority
-  })
+  // Dropdown action handlers
+  const handleEditCase = async (id: string) => {
+    // Example: open edit modal or navigate to edit page
+    // (No-op, as per instruction not to add UI)
+  }
+  const handleAssignToTeam = async (id: string) => {
+    // Example: assign to team (PATCH request)
+    await fetch(`/api/cases/${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "Assigned" }),
+    })
+    // Refetch cases
+    const params = new URLSearchParams()
+    if (searchTerm) params.append("search", searchTerm)
+    if (statusFilter !== "all") params.append("status", statusFilter)
+    if (priorityFilter !== "all") params.append("priority", priorityFilter)
+    const res = await fetch(`/api/cases/?${params.toString()}`)
+    if (res.ok) setCases(await res.json())
+  }
+  const handleCloseCase = async (id: string) => {
+    // Example: close case (PATCH request)
+    await fetch(`/api/cases/${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "Resolved" }),
+    })
+    // Refetch cases
+    const params = new URLSearchParams()
+    if (searchTerm) params.append("search", searchTerm)
+    if (statusFilter !== "all") params.append("status", statusFilter)
+    if (priorityFilter !== "all") params.append("priority", priorityFilter)
+    const res = await fetch(`/api/cases/?${params.toString()}`)
+    if (res.ok) setCases(await res.json())
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -128,7 +128,7 @@ export default function CasesPage() {
               <Input
                 placeholder="Search cases..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -161,7 +161,9 @@ export default function CasesPage() {
 
       {/* Cases List */}
       <div className="space-y-4">
-        {filteredCases.map((case_) => (
+        {loading && <p>Loading cases...</p>}
+        {error && <p className="text-red-500">{error}</p>}
+        {cases.map((case_) => (
           <Card key={case_.id} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -181,10 +183,10 @@ export default function CasesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Case</DropdownMenuItem>
-                        <DropdownMenuItem>Assign to Team</DropdownMenuItem>
-                        <DropdownMenuItem>Close Case</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditCase(case_.id)}>View Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditCase(case_.id)}>Edit Case</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAssignToTeam(case_.id)}>Assign to Team</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCloseCase(case_.id)}>Close Case</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -228,7 +230,7 @@ export default function CasesPage() {
         ))}
       </div>
 
-      {filteredCases.length === 0 && (
+      {cases.length === 0 && (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">

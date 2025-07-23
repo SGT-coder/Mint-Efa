@@ -57,6 +57,8 @@ export default function DocumentManagement() {
   const [editingDoc, setEditingDoc] = useState<any | null>(null)
   const [editDocLoading, setEditDocLoading] = useState(false)
   const [editDocError, setEditDocError] = useState<string | null>(null)
+  // Add state for related case in upload dialog
+  const [uploadCaseId, setUploadCaseId] = useState("")
 
   // Fetch documents with search, type, and pagination
   useEffect(() => {
@@ -109,7 +111,8 @@ export default function DocumentManagement() {
       for (const file of files) {
         const formData = new FormData()
         formData.append("file", file)
-        // Add other fields as needed (category, caseId, etc.)
+        if (uploadCaseId) formData.append("caseId", uploadCaseId)
+        // Add other fields as needed (category, etc.)
         const res = await fetch("/api/documents/", {
           method: "POST",
           body: formData,
@@ -123,6 +126,7 @@ export default function DocumentManagement() {
         setUploadOpen(false)
         setSelectedFiles([])
         setUploadProgress(0)
+        setUploadCaseId("")
       }, 1000)
     } catch (err: any) {
       setError(err.message || "Unknown error")
@@ -320,7 +324,11 @@ export default function DocumentManagement() {
 
                   <div className="space-y-2">
                     <Label>Related Case (Optional)</Label>
-                    <Input placeholder="CASE-001" />
+                    <Input
+                      placeholder="CASE-001"
+                      value={uploadCaseId}
+                      onChange={e => setUploadCaseId(e.target.value)}
+                    />
                   </div>
                 </div>
               </div>
