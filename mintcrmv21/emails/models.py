@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from cases.models import Case
 from contacts.models import Contact
+from accounts.models import User
 
 class Email(models.Model):
     STATUS_CHOICES = [
@@ -20,7 +21,13 @@ class Email(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     case = models.ForeignKey(Case, on_delete=models.CASCADE, null=True, blank=True, related_name='emails')
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True, blank=True, related_name='emails')
-    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    sent_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sent_emails',  # Avoids clash with User.email
+        null=True,
+        blank=True,
+    )
     sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

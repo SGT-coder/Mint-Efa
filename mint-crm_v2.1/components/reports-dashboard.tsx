@@ -32,7 +32,6 @@ export default function ReportsDashboard() {
   const [performanceMetrics, setPerformanceMetrics] = useState<any>(null)
   const [performanceLoading, setPerformanceLoading] = useState(false)
   const [performanceError, setPerformanceError] = useState<string | null>(null)
-
   // Helper to format date as YYYY-MM-DD
   const formatDate = (date: Date | null) => date ? date.toISOString().split('T')[0] : undefined
 
