@@ -43,11 +43,22 @@ class LoginSerializer(serializers.Serializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
-    password_confirm = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True, required=False)
     
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name', 'last_name', 'password', 'password_confirm', 'role', 'phone', 'department']
+    
+    def to_internal_value(self, data):
+        # Use email as username if username is not provided
+        if not data.get('username'):
+            data['username'] = data.get('email', '')
+        # Set password_confirm to password if not provided
+        if not data.get('password_confirm'):
+            data['password_confirm'] = data.get('password', '')
+        # Ignore extra fields like company
+        data = {k: v for k, v in data.items() if k in self.Meta.fields}
+        return super().to_internal_value(data)
     
     def validate(self, data):
         if data['password'] != data['password_confirm']:

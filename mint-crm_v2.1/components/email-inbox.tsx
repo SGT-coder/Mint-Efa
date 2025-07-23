@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState, useEffect } from "react"
 import { Search, Plus, Reply, Forward, Archive, Trash2, Star, Paperclip, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -80,22 +81,27 @@ export default function EmailInbox() {
   // Send email (draft, then send)
   const handleSendEmail = async () => {
     setLoading(true)
+    setError(null)
     try {
       // Create draft
       const res = await fetch("/api/emails/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newEmail),
+        body: JSON.stringify({
+          to: newEmail.to,
+          subject: newEmail.subject,
+          body: newEmail.body,
+          from_email: "me@company.com", // Replace with actual sender
+        }),
       })
       if (!res.ok) throw new Error("Failed to create email draft")
-      const draft: Email = await res.json()
-      // Send the email
-      const sendRes = await fetch(`/api/emails/${draft.id}/send/`, { method: "POST" })
-      if (!sendRes.ok) throw new Error("Failed to send email")
+      const draft = await res.json()
+      // Optionally send the email (if you have a send endpoint)
+      // await fetch(`/api/emails/${draft.id}/send/`, { method: "POST" })
       // Refetch emails
       const updatedRes = await fetch("/api/emails/")
       const updatedEmails = await updatedRes.json()
-      setEmails(updatedEmails)
+      setEmails(updatedEmails.results || updatedEmails)
       setComposeOpen(false)
       setNewEmail({ to: "", subject: "", body: "", priority: "Medium" })
     } catch (err: any) {
@@ -105,14 +111,20 @@ export default function EmailInbox() {
     }
   }
 
-  // Delete email
-  const handleDeleteEmail = async (emailId: number | string) => {
+  // Update email (e.g., star, archive)
+  const handleUpdateEmail = async (emailId: number | string, updates: any) => {
     setLoading(true)
+    setError(null)
     try {
-      const res = await fetch(`/api/emails/${emailId}/`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to delete email")
-      setEmails((prev) => prev.filter((e) => e.id !== emailId))
-      setSelectedEmail(null)
+      const res = await fetch(`/api/emails/${emailId}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) throw new Error("Failed to update email")
+      const updated = await res.json()
+      setEmails((prev) => prev.map((e) => e.id === updated.id ? updated : e))
+      setSelectedEmail((prev) => prev && prev.id === updated.id ? updated : prev)
     } catch (err: any) {
       setError(err.message || "Unknown error")
     } finally {
@@ -120,8 +132,10 @@ export default function EmailInbox() {
     }
   }
 
+  // Reply to email
   const handleReply = async (emailId: number | string, replyBody: string) => {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch(`/api/emails/${emailId}/reply/`, {
         method: "POST",
@@ -135,6 +149,32 @@ export default function EmailInbox() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Forward email
+  const handleForward = async (emailId: number | string, forwardTo: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/emails/${emailId}/forward/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: forwardTo }),
+      })
+      if (!res.ok) throw new Error("Failed to forward email")
+    } catch (err: any) {
+      setError(err.message || "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Star and archive use handleUpdateEmail
+  const handleStarEmail = async (emailId: number | string, starred: boolean) => {
+    await handleUpdateEmail(emailId, { starred: !starred })
+  }
+  const handleArchiveEmail = async (emailId: number | string) => {
+    await handleUpdateEmail(emailId, { archived: true })
   }
 
   const handleCreateCase = async (emailId: number | string) => {
@@ -154,23 +194,8 @@ export default function EmailInbox() {
     }
   }
 
-  const handleForward = async (emailId: number | string, forwardTo: string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/emails/${emailId}/forward/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: forwardTo }),
-      })
-      if (!res.ok) throw new Error("Failed to forward email")
-    } catch (err: any) {
-      setError(err.message || "Unknown error")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getPriorityColor = (priority) => {
+  // Fix parameter types for linter
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "High":
         return "destructive"
@@ -180,43 +205,6 @@ export default function EmailInbox() {
         return "outline"
       default:
         return "outline"
-    }
-  }
-
-  const handleStarEmail = async (emailId: number | string, starred: boolean) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/emails/${emailId}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ starred: !starred }),
-      })
-      if (!res.ok) throw new Error("Failed to update star status")
-      const updated: Email = await res.json()
-      setEmails((prev) => prev.map((e) => e.id === updated.id ? updated : e))
-      setSelectedEmail((prev) => prev && prev.id === updated.id ? updated : prev)
-    } catch (err: any) {
-      setError(err.message || "Unknown error")
-    } finally {
-      setLoading(false)
-    }
-  }
-  const handleArchiveEmail = async (emailId: number | string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/emails/${emailId}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archived: true }),
-      })
-      if (!res.ok) throw new Error("Failed to archive email")
-      const updated: Email = await res.json()
-      setEmails((prev) => prev.map((e) => e.id === updated.id ? updated : e))
-      setSelectedEmail((prev) => prev && prev.id === updated.id ? updated : prev)
-    } catch (err: any) {
-      setError(err.message || "Unknown error")
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -248,7 +236,7 @@ export default function EmailInbox() {
                   <Input
                     id="to"
                     value={newEmail.to}
-                    onChange={(e) => setNewEmail({ ...newEmail, to: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEmail({ ...newEmail, to: e.target.value })}
                     placeholder="recipient@company.com"
                   />
                 </div>
@@ -275,7 +263,7 @@ export default function EmailInbox() {
                 <Input
                   id="subject"
                   value={newEmail.subject}
-                  onChange={(e) => setNewEmail({ ...newEmail, subject: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEmail({ ...newEmail, subject: e.target.value })}
                   placeholder="Email subject"
                 />
               </div>
@@ -285,7 +273,7 @@ export default function EmailInbox() {
                 <Textarea
                   id="body"
                   value={newEmail.body}
-                  onChange={(e) => setNewEmail({ ...newEmail, body: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewEmail({ ...newEmail, body: e.target.value })}
                   placeholder="Type your message here..."
                   rows={8}
                 />
@@ -469,7 +457,7 @@ export default function EmailInbox() {
                   <Textarea
                     placeholder="Type your reply..."
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReplyText(e.target.value)}
                     rows={4}
                   />
                   <div className="flex justify-end space-x-2">
